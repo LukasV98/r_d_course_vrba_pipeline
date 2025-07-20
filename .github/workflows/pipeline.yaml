@@ -20,11 +20,13 @@ jobs:
       - name: Run Test
         run: python -m unittest Test.py
       - uses: actions/checkout@v1
+      - name: Build your project (příklad)
+        run: mkdir -p dist
       - name: Create ZIP archive
-        run: zip -r script.zip scripts/
+        run: zip -r file.zip script/
       - name: Upload ZIP as artifact
         uses: actions/upload-artifact@v4
         with:
-              name: script-zip
-              path: script.zip
+          name: file-zip
+          path: file.zip
 
