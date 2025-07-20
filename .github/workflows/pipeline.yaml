@@ -23,7 +23,7 @@ jobs:
       - name: Build your project (příklad)
         run: mkdir -p dist
       - name: Create ZIP archive
-        run: zip -r file.zip script/
+        run: zip -r file.zip . -i script/
       - name: Upload ZIP as artifact
         uses: actions/upload-artifact@v4
         with:
