@@ -1,5 +1,7 @@
 import unittest
-import main
+
+from main import multiplication
+
 
 class TestMultiplication(unittest.TestCase):
     def test_multiplication_integers(self):
