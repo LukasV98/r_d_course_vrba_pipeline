@@ -11,4 +11,4 @@ class TestMultiplication(unittest.TestCase):
         self.assertEqual(multiplication(2.5,4), 10.0)
 
 if __name__ == '__main__':
-    unittest.main(2,3)
+    unittest.main()

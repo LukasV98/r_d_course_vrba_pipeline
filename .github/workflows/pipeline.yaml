@@ -1,5 +1,5 @@
 name: Pipeline actions
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+run-name: ${{ github.actor }} is testing
 on: [push]
 jobs:
   Python-GitHub-Actions:
@@ -17,6 +17,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: python -m pip install --upgrade pip setuptools wheel
+      - name: Install Unittest
+        run: pip install unittest
       - name: Run Test
         run: pytest Tests.py
 
