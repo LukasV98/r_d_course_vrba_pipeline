@@ -1,7 +1,6 @@
 FROM python:3.9-slim
 LABEL authors="vrba5597"
 
-ENTRYPOINT ["top", "-b"]
 WORKDIR /app
 COPY main.py .
 COPY Test.py .
