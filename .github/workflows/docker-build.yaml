@@ -30,7 +30,7 @@ jobs:
 
     - name: Build Docker image
       run: |
-        echo &quot;�� Buildování Docker image...&quot;
+        echo 🐳 Buildování Docker image...;
         docker build -t \${{ env.IMAGE_NAME }}:latest .
         docker build -t \${{ env.IMAGE_NAME }}:\${{ github.sha }} .
 
