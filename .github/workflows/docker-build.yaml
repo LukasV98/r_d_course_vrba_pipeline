@@ -1,0 +1,43 @@
+on:
+  push:
+
+    branches: [ main, master ]
+  pull_request:
+
+env:
+  IMAGE_NAME: python-calculator
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+  steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.9"
+
+    - name: Run unit tests
+      run: |
+        echo &quot;�� Run unit tests...&quot;
+        python -m unittest Test.py -v
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: |
+        echo &quot;�� Buildování Docker image...&quot;
+        docker build -t \${{ env.IMAGE_NAME }}:latest .
+        docker build -t \${{ env.IMAGE_NAME }}:\${{ github.sha }} .
+
+    - name: Test Docker container
+      run: |
+        echo &quot;�� Testování Docker kontejneru...&quot;
+        docker run --rm \${{ env.IMAGE_NAME }}:latest
+
+    - name: List Docker images
+      run: |
+        echo &quot;�� Seznam vytvořených images:&quot;
+        docker images | grep \${{ env.IMAGE_NAME }}

@@ -1,0 +1,290 @@
+Počet bodů: 15
+Deadline: 05.08.2025
+
+Tento úkol navazuje na domácí úkol z lekce 2, kde jste vytvořili Python skript s
+funkcí a unit testem. Nyní tento skript zabalíte do Docker kontejneru a nasadíte
+do AWS ECR.
+● Část A (10 bodů): Dockerizace a GitHub Actions pipeline
+● Část B (5 bodů): Terraform ECR repository a nahrání do AWS ECR
+Pro ECR a terraform budete potřebovat nastavit AWS credentials v Github
+Secrets, pokud jste tak již neučinili v lekci 4
+
+Část A: Dockerizace aplikace (10 bodů)
+Krok 1: Příprava souborů z lekce 2
+Ujistěte se, že máte z lekce 2 tyto soubory:
+● calculator.py (váš Python skript s funkcí)
+● test_calculator.py (unit test)
+Příklad calculator.py:
+def scitani(a, b):
+&quot;&quot;&quot;Funkce pro sčítání dvou čísel&quot;&quot;&quot;
+return a + b
+
+def main():
+result = scitani(5, 3)
+
+print(f&quot;Výsledek: {result}&quot;)
+
+if __name__ == &quot;__main__&quot;:
+main()
+Krok 2: Vytvoření Dockerfile
+Vytvořte soubor Dockerfile v root adresáři:
+# Použijeme oficiální Python runtime jako základ
+FROM python:3.9-slim
+
+# Nastavíme pracovní adresář v kontejneru
+WORKDIR /app
+
+# Zkopírujeme Python soubory do kontejneru
+COPY calculator.py .
+COPY test_calculator.py .
+
+# Spustíme testy při buildu (volitelné)
+RUN python -m unittest test_calculator.py -v
+
+# Nastavíme příkaz, který se spustí při startu kontejneru
+CMD [&quot;python&quot;, &quot;calculator.py&quot;]
+Krok 3: Vytvoření .dockerignore
+.git
+.github
+*.md
+__pycache__/
+
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.zip
+.venv/
+venv/
+Krok 4: Úprava GitHub Actions workflow
+Vytvořte nebo upravte .github/workflows/docker-build.yml:
+name: Docker Build and Test
+
+
+
+Krok 5: Lokální testování (před push)
+# 1. Build Docker image
+docker build -t python-calculator:latest .
+
+# 2. Spuštění kontejneru
+docker run --rm python-calculator:latest
+
+# 3. Ověření vytvořených images
+docker images | grep python-calculator
+
+# 4. Testování interaktivně (volitelné)
+docker run -it python-calculator:latest /bin/bash
+
+Část B: Terraform a AWS ECR (5 bodů)
+Krok 1: Vytvoření Terraform konfigurace
+Vytvořte adresář terraform/ a v něm tyto soubory:
+terraform/main.tf:
+terraform {
+required_version = &quot;&gt;= 1.0&quot;
+required_providers {
+
+aws = {
+source = &quot;hashicorp/aws&quot;
+version = &quot;~&gt; 5.0&quot;
+}
+}
+}
+
+provider &quot;aws&quot; {
+region = var.aws_region
+}
+
+# ECR Repository
+resource &quot;aws_ecr_repository&quot; &quot;python_calculator&quot; {
+name = var.repository_name
+image_tag_mutability = &quot;MUTABLE&quot;
+
+image_scanning_configuration {
+scan_on_push = true
+}
+
+tags = {
+Environment = var.environment
+Project = &quot;DevOps-Course&quot;
+Lesson = &quot;5&quot;
+}
+}
+
+# ECR Lifecycle Policy
+resource &quot;aws_ecr_lifecycle_policy&quot; &quot;python_calculator_policy&quot; {
+repository = aws_ecr_repository.python_calculator.name
+
+policy = jsonencode({
+rules = [
+{
+rulePriority = 1
+description = &quot;Keep last 10 images&quot;
+selection = {
+tagStatus = &quot;tagged&quot;
+tagPrefixList = [&quot;v&quot;]
+countType = &quot;imageCountMoreThan&quot;
+countNumber = 10
+}
+action = {
+type = &quot;expire&quot;
+}
+}
+]
+})
+}
+terraform/variables.tf:
+variable &quot;aws_region&quot; {
+description = &quot;AWS region&quot;
+
+type = string
+default = &quot;eu-central-1&quot;
+}
+
+variable &quot;repository_name&quot; {
+description = &quot;Name of the ECR repository&quot;
+type = string
+default = &quot;python-calculator&quot;
+}
+
+variable &quot;environment&quot; {
+description = &quot;Environment name&quot;
+type = string
+default = &quot;dev&quot;
+}
+terraform/outputs.tf:
+output &quot;ecr_repository_url&quot; {
+description = &quot;URL of the ECR repository&quot;
+value = aws_ecr_repository.python_calculator.repository_url
+}
+
+output &quot;ecr_repository_arn&quot; {
+description = &quot;ARN of the ECR repository&quot;
+value = aws_ecr_repository.python_calculator.arn
+}
+Krok 2: Rozšíření GitHub Actions o ECR deployment
+
+Přidejte do .github/workflows/docker-build.yml nový job:
+deploy-to-ecr:
+needs: build-and-test
+runs-on: ubuntu-latest
+if: github.ref == &#39;refs/heads/main&#39;
+
+steps:
+- name: Checkout repository
+uses: actions/checkout@v4
+
+- name: Configure AWS credentials
+uses: aws-actions/configure-aws-credentials@v4
+with:
+aws-access-key-id: \${{ secrets.AWS_ACCESS_KEY_ID }}
+aws-secret-access-key: \${{ secrets.AWS_SECRET_ACCESS_KEY }}
+aws-region: eu-central-1
+
+- name: Setup Terraform
+uses: hashicorp/setup-terraform@v3
+with:
+terraform_version: 1.5.0
+
+- name: Terraform Init
+working-directory: ./terraform
+run: terraform init
+
+- name: Terraform Plan
+working-directory: ./terraform
+run: terraform plan
+
+- name: Terraform Apply
+working-directory: ./terraform
+run: terraform apply -auto-approve
+
+- name: Get ECR repository URL
+id: ecr-url
+working-directory: ./terraform
+run: |
+ECR_URL=\$(terraform output -raw ecr_repository_url)
+echo &quot;ecr_url=\$ECR_URL&quot; &gt;&gt; \$GITHUB_OUTPUT
+
+- name: Login to Amazon ECR
+id: login-ecr
+uses: aws-actions/amazon-ecr-login@v2
+
+- name: Build and push Docker image to ECR
+run: |
+ECR_URL=\${{ steps.ecr-url.outputs.ecr_url }}
+docker build -t \$ECR_URL:latest .
+docker build -t \$ECR_URL:\${{ github.sha }} .
+
+echo &quot;�� Pushing images to ECR...&quot;
+
+docker push \$ECR_URL:latest
+docker push \$ECR_URL:\${{ github.sha }}
+
+echo &quot;✅ Images pushed successfully!&quot;
+echo &quot;Repository URL: \$ECR_URL&quot;
+Krok 3: Nastavení GitHub Secrets
+V GitHub repository nastavte tyto secrets:
+● AWS_ACCESS_KEY_ID
+● AWS_SECRET_ACCESS_KEY
+Krok 4: Lokální testování Terraform
+# 1. Přejděte do terraform adresáře
+cd terraform/
+
+# 2. Inicializace Terraform
+terraform init
+
+# 3. Plánování změn
+terraform plan
+
+# 4. Aplikování změn
+terraform apply
+
+# 5. Zobrazení outputs
+terraform output
+
+# 6. Po dokončení testování můžete resources smazat
+
+terraform destroy
+Krok 5: Manuální push do ECR (pro testování)
+# 1. Přihlášení do ECR
+aws ecr get-login-password --region eu-central-1 | docker login --username AWS
+--password-stdin YOUR_ACCOUNT.dkr.ecr.eu-central-1.amazonaws.com
+
+# 2. Tag image pro ECR
+docker tag python-calculator:latest YOUR_ACCOUNT.dkr.ecr.eu-central-
+1.amazonaws.com/python-calculator:latest
+
+# 3. Push do ECR
+docker push YOUR_ACCOUNT.dkr.ecr.eu-central-1.amazonaws.com/python-
+calculator:latest
+
+# 4. Ověření v ECR
+aws ecr list-images --repository-name python-calculator --region eu-central-1
+
+Kontrolní seznam pro odevzdání
+Část A (10 bodů):
+●  Dockerfile je vytvořen a funguje
+●  .dockerignore je vytvořen (volitelné)
+●  GitHub Actions pipeline builduje Docker image
+●  Pipeline spouští unit testy
+●  Docker kontejner se úspěšně spustí
+●  Vytváří se zip balíček s artifakty
+●  Screenshot úspěšné pipeline
+Část B (5 bodů):
+
+●  Terraform konfigurace vytváří ECR repository
+●  GitHub Actions nasazuje do ECR
+●  Docker image je úspěšně nahrán do ECR
+●  Terraform outputs ukazují ECR URL
+●  Screenshot ECR repository s nahraným image
+
+Tipy a doporučení (nejen pro úkol, ale i obecně)
+1. Testujte lokálně před push do GitHub
+2. Používejte malé base images (alpine, slim)
+3. Nastavte správné tagy pro verzování
+4. Sledujte logy GitHub Actions pro debugging
+5. Používejte ECR lifecycle policies pro správu starších images
+Časté chyby a řešení
+● Docker build fails: Zkontrolujte syntax Dockerfile
+● ECR push fails: Ověřte AWS credentials a permissions
+● Terraform fails: Zkontrolujte AWS provider konfiguraci
+● Tests fail: Ujistěte se, že unit testy z lekce 2 fungují
