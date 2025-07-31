@@ -23,9 +23,7 @@ jobs:
         python-version: ${{ env.python-version }}
 
     - name: Run unit tests
-      run: |
-        echo &quot;�� Run unit tests...&quot;
-        python -m unittest Test.py -v
+      run:  python -m unittest Test.py
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
