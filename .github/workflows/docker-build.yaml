@@ -43,3 +43,14 @@ jobs:
       run: |
         echo 🐳 Seznam vytvořených images:
         docker images | grep \${{ env.IMAGE_NAME }}
+
+    - uses: actions/checkout@v1
+    - name: Build your project
+      run: mkdir -p dist
+    - name: Create ZIP archive
+      run: zip -r file.zip . -i script/
+    - name: Upload ZIP as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: file-zip
+        path: file.zip
