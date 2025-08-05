@@ -100,6 +100,7 @@ jobs:
           uses: aws-actions/amazon-ecr-login@v2
 
         - name: Build and push Docker image to ECR
+          working-directory: ./terraform
           run: |
             ecr_url=$(terraform output -raw ecr_repository_url)
             sha=${{ github.sha }}
