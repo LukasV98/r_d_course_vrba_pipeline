@@ -92,7 +92,8 @@ jobs:
           id: ecr-url
           working-directory: ./terraform
           run: |
-            echo "ecr_url=$(terraform output -raw ecr_repository_url)" >> $GITHUB_OUTPUT
+            ecr_url=$(terraform output -raw ecr_repository_url)
+            echo "ecr_url=$ecr_url" >> $GITHUB_OUTPUT
 
         - name: Login to Amazon ECR
           id: login-ecr
@@ -100,14 +101,14 @@ jobs:
 
         - name: Build and push Docker image to ECR
           run: |
-            ECR_URL= $(terraform output -raw ecr_repository_url)
-            docker build -t \$ECR_URL:latest .
-            docker build -t \$ECR_URL:\${{ github.sha }} .
+            ecr_url=$(terraform output -raw ecr_repository_url)
+            docker build -t $ECR_URL:latest .
+            docker build -t $ECR_URL:${{ github.sha }} .
     
             echo "�� Pushing images to ECR..."
     
-            docker push \$ECR_URL:latest
-            docker push \$ECR_URL:\${{ github.sha }}
+            docker push $ECR_URL:latest
+            docker push $ECR_URL:${{ github.sha }}
     
             echo "✅ Images pushed successfully!"
-            echo "Repository URL: \$ECR_URL"
+            echo "Repository URL:$ECR_URL"
