@@ -103,7 +103,7 @@ jobs:
           run: |
             ecr_url=$(terraform output -raw ecr_repository_url)
             docker build -t $ecr_url:latest .
-            docker build -t $ecr_url:${{ github.sha }} .
+            docker build -t $ecr_url:\${{ github.sha }} .
     
             echo "�� Pushing images to ECR..."
     
@@ -111,4 +111,4 @@ jobs:
             docker push $ecr_url:\${{ github.sha }}
     
             echo "✅ Images pushed successfully!"
-            echo "Repository URL:\$ECR_URL"
+            echo "Repository URL:$ecr_url"
