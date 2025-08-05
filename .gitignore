@@ -163,4 +163,3 @@ cython_debug/
 !/ukol.txt
 !/kod.txt
 /terraform/.terraform/
-/.github/workflows/pipeline.yaml
